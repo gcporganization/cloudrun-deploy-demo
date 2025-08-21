@@ -40,6 +40,6 @@ jobs:
         run: |
           gcloud run deploy cloudrun-demo \
             --image="gcr.io/nonprod1-svc-gu0t/cloudrun-demo:latest" \
-            --region=europe-west2 \
+            --region=us-east1 \
             --platform=managed \
             --allow-unauthenticated
