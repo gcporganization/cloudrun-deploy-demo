@@ -25,5 +25,5 @@ jobs:
 
       - name: Trigger Cloud Build
         run: |
-          gcloud builds triggers run deploy-cloudrun \
+          gcloud builds triggers run cloudrun-trigger \
             --branch=main
