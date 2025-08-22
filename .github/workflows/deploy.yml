@@ -2,37 +2,38 @@ name: Deploy to Cloud Run
 on:
   push:
     branches:
-      - main   # Change to your branch if needed
+      - main
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # Required for OIDC / WIF
-      contents: read    # To checkout code
+      id-token: write
+      contents: read
     steps:
-      # Checkout source code
       - name: Checkout
         uses: actions/checkout@v4
-      # Authenticate with GCP using Workload Identity Federation
+        
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           token_format: access_token
           workload_identity_provider: "projects/245066890273/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
           service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
-      # Setup gcloud CLI
+          
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: nonprod1-svc-gu0t
-          install_components: 'beta' # ensures Cloud Run deploy works with latest features
-      # Build Docker image and push to GCR (or Artifact Registry if you prefer)
-      - name: Build and Push Docker image
+          
+      # Build and Push with Cloud Build (regional)
+      - name: Build and Push Docker image with Cloud Build
         run: |
-          gcloud builds submit --tag "gcr.io/nonprod1-svc-gu0t/cloudrun-demo:latest" \
+          gcloud builds submit \
+            --tag "gcr.io/nonprod1-svc-gu0t/cloudrun-demo:latest" \
             --region=us-east1 \
-            --project=nonprod1-svc-gu0t .
-      # Deploy to Cloud Run
+            --project=nonprod1-svc-gu0t \
+            .
+          
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy cloudrun-demo \
@@ -40,4 +41,5 @@ jobs:
             --region us-east1 \
             --platform managed \
             --allow-unauthenticated \
-            --port 8080
+            --port 8080 \
+            --project=nonprod1-svc-gu0t
