@@ -17,3 +17,6 @@ steps:
 
 images:
   - 'gcr.io/$PROJECT_ID/cloudrun-demo:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
