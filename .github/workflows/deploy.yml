@@ -2,44 +2,35 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches:
-      - main   # Change to your branch if needed
+    branches: [ "main" ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    permissions:
-      id-token: write   # Required for OIDC
-      contents: read    # To checkout code
-
     steps:
-      # Checkout source code
+      # Checkout your repo
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Authenticate with GCP using Workload Identity Federation (OIDC)
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: access_token
-          workload_identity_provider: "projects/245066890273/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
-          service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
-
-      # Setup gcloud CLI
-      - name: Set up gcloud
+      # Setup gcloud
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: nonprod1-svc-gu0t
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
 
-      # Build Docker image and push to Artifact Registry (or GCR)
-      - name: Build and Push Docker image
-        run: |
-          gcloud builds submit --tag "gcr.io/nonprod1-svc-gu0t/cloudrun-demo:latest" .
+      # Enable Cloud Build (only needs to be run once, but safe to keep here)
+      - name: Enable Cloud Build API
+        run: gcloud services enable cloudbuild.googleapis.com
 
-      # Deploy to Cloud Run
-      - name: Deploy to Cloud Run
+      # Build & Deploy to Cloud Run
+      - name: Build and Deploy
         run: |
-          gcloud run deploy cloudrun-demo \
-            --image="gcr.io/nonprod1-svc-gu0t/cloudrun-demo:latest" \
-            --region=us-east1 \
-            --platform=managed \
+          gcloud builds submit --tag gcr.io/nonprod1-svc-gu0t/myapp
+          gcloud run deploy myapp \
+            --image gcr.io/nonprod1-svc-gu0t/myapp \
+            --platform managed \
+            --region europe-west2 \
             --allow-unauthenticated
