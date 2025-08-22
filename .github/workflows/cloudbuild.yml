@@ -1,0 +1,29 @@
+name: Trigger Cloud Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: "projects/245066890273/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Trigger Cloud Build
+        run: |
+          gcloud builds triggers run deploy-cloudrun \
+            --branch=main
