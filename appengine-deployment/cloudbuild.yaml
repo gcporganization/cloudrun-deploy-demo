@@ -1,0 +1,58 @@
+# appengine-deployment/cloudbuild.yaml
+steps:
+  # Step 1: Enable required APIs
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Enabling required APIs..."
+        gcloud config set project ${_PROJECT_ID}
+        gcloud services enable appengine.googleapis.com --project=${_PROJECT_ID}
+        gcloud services enable iap.googleapis.com --project=${_PROJECT_ID}
+        echo "APIs enabled successfully"
+
+  # Step 2: Create App Engine application if it doesn't exist
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Checking App Engine application..."
+        if ! gcloud app describe --project=${_PROJECT_ID} >/dev/null 2>&1; then
+          echo "Creating App Engine application..."
+          gcloud app create --region=us-east1 --project=${_PROJECT_ID}
+        else
+          echo "App Engine application already exists"
+        fi
+
+  # Step 3: Deploy App Engine application
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Deploying App Engine application..."
+        gcloud app deploy app.yaml --project=${_PROJECT_ID} --quiet --no-promote
+    dir: '.'
+
+  # Step 4: Configure IAP (Identity-Aware Proxy) preparation
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Preparing IAP configuration..."
+        # Note: OAuth brand and client setup requires manual configuration first
+        # This step prepares the environment for IAP setup
+        echo "IAP APIs are enabled and ready for OAuth configuration"
+        echo "Next steps: Configure OAuth consent screen and create OAuth client"
+
+substitutions:
+  _SERVICE_NAME: 'hello-world-app'
+  _PROJECT_ID: 'nonprod1-svc-gu0t'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'

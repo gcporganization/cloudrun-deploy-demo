@@ -1,0 +1,26 @@
+# appengine-deployment/app.yaml
+runtime: python39
+service: default
+
+# IAP configuration
+iap:
+  enabled: true
+  oauth2_client_id: "YOUR_OAUTH_CLIENT_ID"  # Will be configured after OAuth brand setup
+
+# Environment variables
+env_variables:
+  FLASK_ENV: production
+  APP_TITLE: "Hello World - Azure AD Protected"
+
+# Scaling configuration
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+# Health check configuration
+handlers:
+- url: /.*
+  script: auto
+  secure: always
+  redirect_http_response_code: 301
