@@ -6,7 +6,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "Enabling required APIs..."
+        echo "Enabling required APIs for project: ${_PROJECT_ID}"
         gcloud config set project ${_PROJECT_ID}
         gcloud services enable appengine.googleapis.com --project=${_PROJECT_ID}
         gcloud services enable iap.googleapis.com --project=${_PROJECT_ID}
@@ -18,9 +18,9 @@ steps:
     args:
       - '-c'
       - |
-        echo "Checking App Engine application..."
+        echo "Checking App Engine application for project: ${_PROJECT_ID}"
         if ! gcloud app describe --project=${_PROJECT_ID} >/dev/null 2>&1; then
-          echo "Creating App Engine application..."
+          echo "Creating App Engine application in us-east1..."
           gcloud app create --region=us-east1 --project=${_PROJECT_ID}
         else
           echo "App Engine application already exists"
@@ -32,21 +32,26 @@ steps:
     args:
       - '-c'
       - |
-        echo "Deploying App Engine application..."
-        gcloud app deploy app.yaml --project=${_PROJECT_ID} --quiet --no-promote
+        echo "Deploying ${_SERVICE_NAME} to App Engine..."
+        gcloud app deploy app.yaml --project=${_PROJECT_ID} --quiet --version=${_SERVICE_NAME}-v1
+        echo "Deployment of ${_SERVICE_NAME} completed successfully"
     dir: '.'
 
-  # Step 4: Configure IAP (Identity-Aware Proxy) preparation
+  # Step 4: Configure IAP preparation
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Preparing IAP configuration..."
-        # Note: OAuth brand and client setup requires manual configuration first
-        # This step prepares the environment for IAP setup
+        echo "Preparing IAP configuration for ${_SERVICE_NAME}..."
+        echo "Service: ${_SERVICE_NAME}"
+        echo "Project: ${_PROJECT_ID}"
         echo "IAP APIs are enabled and ready for OAuth configuration"
-        echo "Next steps: Configure OAuth consent screen and create OAuth client"
+        echo "Next steps:"
+        echo "1. Configure OAuth consent screen in Cloud Console"
+        echo "2. Create OAuth 2.0 client ID"
+        echo "3. Update app.yaml with client ID"
+        echo "4. Configure IAP policies"
 
 substitutions:
   _SERVICE_NAME: 'hello-world-app'
@@ -54,5 +59,6 @@ substitutions:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  substitution_option: ALLOW_LOOSE
 
 timeout: '1200s'

@@ -46,9 +46,14 @@ jobs:
 
     - name: 'Trigger Cloud Build for App Engine'
       run: |
+        echo "Starting deployment with the following parameters:"
+        echo "Project: ${{ env.PROJECT_ID }}"
+        echo "Service: ${{ env.SERVICE }}"
+        echo "Region: ${{ env.GAR_LOCATION }}"
+        
         gcloud builds submit \
-          --config=appengine-deployment/cloudbuild.yaml \
+          --config=cloudbuild.yaml \
           --project=${{ env.PROJECT_ID }} \
-          --substitutions=_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }} \
+          --substitutions="_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }}" \
           --timeout=1200s \
           appengine-deployment/
