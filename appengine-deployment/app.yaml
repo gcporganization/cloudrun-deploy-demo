@@ -1,11 +1,7 @@
+
 # appengine-deployment/app.yaml
 runtime: python39
 service: default
-
-# IAP configuration
-iap:
-  enabled: true
-  oauth2_client_id: "YOUR_OAUTH_CLIENT_ID"  # Will be configured after OAuth brand setup
 
 # Environment variables
 env_variables:
@@ -14,7 +10,7 @@ env_variables:
 
 # Scaling configuration
 automatic_scaling:
-  min_instances: 1
+  min_instances: 0
   max_instances: 10
   target_cpu_utilization: 0.6
 

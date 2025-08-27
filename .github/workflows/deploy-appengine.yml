@@ -1,4 +1,5 @@
-name: Deply to App Engine via Cloud Build
+# .github/workflows/deploy-appengine.yml
+name: Deploy to App Engine via Cloud Build
 
 on:
   push:
@@ -7,6 +8,7 @@ on:
       - develop
     paths:
       - 'appengine-deployment/**'
+  workflow_dispatch:
 
 env:
   PROJECT_ID: nonprod1-svc-gu0t
@@ -14,9 +16,6 @@ env:
   GAR_LOCATION: 'us-east1'
   SERVICE: hello-world-app
 
-#Deploy job with specific permissions:
-#contents-read: allows read access to repository contents
-#id-token: write - Grants the job permission to generate and use OIDC identity token
 jobs:
   deploy:
     permissions: 
@@ -26,28 +25,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@4.1.7
+      uses: actions/checkout@v4
 
     - name: Google Auth
       id: auth
       uses: 'google-github-actions/auth@v2'
       with:
-          token_format: access_token
-          workload_identity_provider: "projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
-          service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
+        token_format: 'access_token'
+        workload_identity_provider: "projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+        service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
 
     - name: 'Setup Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
 
+    - name: 'Verify Authentication'
+      run: |
+        gcloud config set project ${{ env.PROJECT_ID }}
+        gcloud auth list
+        gcloud config list
+
     - name: 'Trigger Cloud Build for App Engine'
       run: |
-        gcloud config set project $PROJECT_ID
         gcloud builds submit \
           --config=appengine-deployment/cloudbuild.yaml \
-          --project=$PROJECT_ID \
-          --substitutions=_SERVICE_NAME=$SERVICE,_PROJECT_ID=$PROJECT_ID appengine-deployment/
-
-
-
-
-
+          --project=${{ env.PROJECT_ID }} \
+          --substitutions=_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }} \
+          --timeout=1200s \
+          appengine-deployment/
