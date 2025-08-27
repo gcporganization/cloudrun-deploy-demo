@@ -62,6 +62,7 @@ jobs:
         echo "Region: ${{ env.GAR_LOCATION }}"
         
         gcloud builds submit \
+          --region=${{ env.GAR_LOCATION }}"
           --config=appengine-deployment/cloudbuild.yaml \
           --project=${{ env.PROJECT_ID }} \
           --substitutions="_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }}" \
