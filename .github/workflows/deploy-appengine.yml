@@ -49,7 +49,7 @@ jobs:
       run: |
         ls -R appengine-deployment/
 
-    - name: Verify Access Token
+    - name: Verify Access Token Here
       run: |
         echo "Access Token: $GOOGLE_GHA_ACCESS_TOKEN"
         gcloud auth print-access-token
