@@ -35,6 +35,7 @@ jobs:
         workload_identity_provider: "projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
         service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
         access_token_scopes: "https://www.googleapis.com/auth/cloud-platform"
+        create_credentials_file: false
 
     - name: 'Setup Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
@@ -62,7 +63,7 @@ jobs:
         echo "Region: ${{ env.GAR_LOCATION }}"
         
         cd appengine-deployment/
-        
+
         gcloud builds submit \
           --config=cloudbuild.yaml \
           --project=${{ env.PROJECT_ID }} \
