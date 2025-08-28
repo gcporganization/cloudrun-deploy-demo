@@ -40,6 +40,15 @@ jobs:
     - name: 'Setup Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
 
+    - name: Activate GCP account for gcloud
+      run: gcloud auth activate-account --access-token=$GOOGLE_GHA_ACCESS_TOKEN
+
+    - name: Debug gcloud auth
+      run: |
+        gcloud auth list
+        gcloud config list
+
+
     - name: 'Trigger Cloud Build for App Engine'
       run: |
         echo "Starting deployment with the following parameters:"
