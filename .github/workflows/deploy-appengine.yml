@@ -40,21 +40,6 @@ jobs:
     - name: 'Setup Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
 
-    - name: 'Verify Authentication'
-      run: |
-        gcloud config set project ${{ env.PROJECT_ID }}
-        gcloud auth list
-        gcloud config list
-    
-    - name: List directory contents
-      run: |
-        ls -R appengine-deployment/
-
-    - name: Verify Access Token Here
-      run: |
-        echo "Access Token: $GOOGLE_GHA_ACCESS_TOKEN"
-        gcloud auth print-access-token
-
     - name: 'Trigger Cloud Build for App Engine'
       run: |
         echo "Starting deployment with the following parameters:"
