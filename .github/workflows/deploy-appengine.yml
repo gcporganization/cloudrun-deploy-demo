@@ -69,6 +69,7 @@ jobs:
         gcloud app deploy app.yaml \
           --project=${{ env.PROJECT_ID }} \
           --version=v$(date +%s) \
+          --no-cache
           --quiet \
           --verbosity=info
         
