@@ -1,5 +1,5 @@
-# .github/workflows/deploy-appengine.yml
-name: Deploy to App Engine via Cloud Build
+# .github/workflows/deploy-appengine-direct.yml
+name: Deploy App Engine (Direct)
 
 on:
   push:
@@ -33,48 +33,50 @@ jobs:
       with:
         workload_identity_provider: "projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
         service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
-        token_format: 'access_token'
 
     - name: 'Setup Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
       with:
         project_id: ${{ env.PROJECT_ID }}
 
-    - name: 'Verify Authentication and Project'
+    - name: 'Verify Setup'
       run: |
-        echo "=== Authentication Verification ==="
-        gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
-        echo ""
-        echo "=== Project Configuration ==="
+        gcloud auth list --filter=status:ACTIVE
         gcloud config list
-        echo ""
-        echo "=== Project Details ==="
-        gcloud projects describe ${{ env.PROJECT_ID }} --format="table(projectId,name,lifecycleState)"
+        gcloud app describe --project=${{ env.PROJECT_ID }}
 
-    - name: 'Deploy App Engine via Cloud Build'
+    - name: 'Enable Required APIs'
+      run: |
+        gcloud services enable appengineadmin.googleapis.com --project=${{ env.PROJECT_ID }}
+        gcloud services enable appengine.googleapis.com --project=${{ env.PROJECT_ID }}
+        gcloud services enable iap.googleapis.com --project=${{ env.PROJECT_ID }}
+
+    - name: 'Deploy App Engine Directly'
       working-directory: appengine-deployment
       run: |
-        echo "=== Starting App Engine Deployment ==="
-        echo "Project: ${{ env.PROJECT_ID }}"
-        echo "Service: ${{ env.SERVICE }}"
-        echo "Region: ${{ env.GAR_LOCATION }}"
+        echo "=== Verifying files ==="
+        ls -la
         echo ""
-        
-        # Verify required APIs are enabled before deployment
-        echo "=== Checking Required APIs ==="
-        gcloud services list --enabled --filter="name:(appengine.googleapis.com OR cloudbuild.googleapis.com OR iap.googleapis.com)" --format="table(name,title)"
+        echo "=== app.yaml content ==="
+        cat app.yaml
         echo ""
-        
-        # Submit Cloud Build
-        gcloud builds submit \
-          --config=cloudbuild.yaml \
+        echo "=== main.py exists? ==="
+        ls -la main.py
+        echo ""
+        echo "=== requirements.txt content ==="
+        cat requirements.txt
+        echo ""
+        echo "=== Starting direct App Engine deployment ==="
+        gcloud app deploy app.yaml \
           --project=${{ env.PROJECT_ID }} \
-          --substitutions="_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }}" \
-          --timeout=1200s \
-          .
+          --version=v$(date +%s) \
+          --quiet \
+          --verbosity=info
         
         echo ""
-        echo "=== Deployment Summary ==="
-        echo "✅ App Engine deployment completed successfully!"
-        echo "🌐 Your application will be available at: https://${{ env.PROJECT_ID }}.ue.r.appspot.com"
-        echo "📋 Next step: Configure IAP for Azure AD integration"
+        echo "=== Deployment completed! ==="
+        echo "🌐 Your app is available at: https://${{ env.PROJECT_ID }}.ue.r.appspot.com"
+        
+        echo ""
+        echo "=== Testing the deployment ==="
+        gcloud app browse --project=${{ env.PROJECT_ID }} --no-launch-browser
