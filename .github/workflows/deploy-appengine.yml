@@ -63,9 +63,9 @@ jobs:
         
         gcloud builds submit \
           --region=${{ env.GAR_LOCATION }}
-          --config=cloudbuild.yaml \
+          --config=appengine-deployment/cloudbuild.yaml \
           --project=${{ env.PROJECT_ID }} \
           --substitutions="_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }}" \
           --timeout=1200s \
           --verbosity=debug \
-          appengine-deployment/
+          ./appengine-deployment/
