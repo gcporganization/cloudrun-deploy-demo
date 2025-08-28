@@ -63,7 +63,7 @@ jobs:
         
         cd appengine-deployment/
         gcloud builds submit \
-          --region=${{ env.GAR_LOCATION }}
+          --region=global
           --config=cloudbuild.yaml \
           --project=${{ env.PROJECT_ID }} \
           --substitutions="_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }}" \
