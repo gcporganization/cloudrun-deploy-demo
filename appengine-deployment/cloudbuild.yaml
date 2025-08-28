@@ -1,57 +1,138 @@
 # appengine-deployment/cloudbuild.yaml
 steps:
-  # Step 1: Enable required APIs
+  # Step 1: Verify and set project context
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Enabling required APIs for project: ${_PROJECT_ID}"
+        echo "=== Setting up project context ==="
         gcloud config set project ${_PROJECT_ID}
-        gcloud services enable appengine.googleapis.com --project=${_PROJECT_ID}
-        gcloud services enable iap.googleapis.com --project=${_PROJECT_ID}
-        echo "APIs enabled successfully"
+        gcloud config list
+        echo "Project set to: ${_PROJECT_ID}"
+        
+        echo "=== Verifying authentication ==="
+        gcloud auth list --filter=status:ACTIVE
+        
+        echo "=== Checking project details ==="
+        gcloud projects describe ${_PROJECT_ID} || echo "Project describe failed"
 
-  # Step 2: Create App Engine application if it doesn't exist
+  # Step 2: Enable required APIs with verification
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Checking App Engine application for project: ${_PROJECT_ID}"
-        if ! gcloud app describe --project=${_PROJECT_ID} >/dev/null 2>&1; then
-          echo "Creating App Engine application in us-east1..."
-          gcloud app create --region=us-east1 --project=${_PROJECT_ID}
+        echo "=== Enabling required APIs ==="
+        echo "Enabling App Engine Admin API..."
+        gcloud services enable appengine.googleapis.com --project=${_PROJECT_ID}
+        
+        echo "Enabling App Engine Admin API (admin)..."
+        gcloud services enable appengineadmin.googleapis.com --project=${_PROJECT_ID}
+        
+        echo "Enabling IAP API..."
+        gcloud services enable iap.googleapis.com --project=${_PROJECT_ID}
+        
+        echo "Enabling Cloud Resource Manager API..."
+        gcloud services enable cloudresourcemanager.googleapis.com --project=${_PROJECT_ID}
+        
+        echo "=== Waiting for APIs to be fully enabled ==="
+        sleep 30
+        
+        echo "=== Verifying enabled APIs ==="
+        gcloud services list --enabled --filter="name:(appengine OR cloudresourcemanager)" --format="table(name,title)"
+
+  # Step 3: Create App Engine application with comprehensive checks
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "=== Checking App Engine application status ==="
+        if gcloud app describe --project=${_PROJECT_ID} >/dev/null 2>&1; then
+          echo "✅ App Engine application already exists"
+          gcloud app describe --project=${_PROJECT_ID}
         else
-          echo "App Engine application already exists"
+          echo "⚠️  App Engine application does not exist. Creating..."
+          if gcloud app create --region=us-east1 --project=${_PROJECT_ID}; then
+            echo "✅ App Engine application created successfully"
+            # Wait for application to be fully ready
+            sleep 60
+            gcloud app describe --project=${_PROJECT_ID}
+          else
+            echo "❌ Failed to create App Engine application"
+            echo "This might be due to:"
+            echo "1. Organization policy restrictions"
+            echo "2. Insufficient permissions"
+            echo "3. Region restrictions"
+            exit 1
+          fi
         fi
 
-  # Step 3: Deploy App Engine application
+  # Step 4: Deploy App Engine application
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Deploying ${_SERVICE_NAME} to App Engine..."
-        gcloud app deploy app.yaml --project=${_PROJECT_ID} --quiet --version=${_SERVICE_NAME}-v1
-        echo "Deployment of ${_SERVICE_NAME} completed successfully"
-    dir: '.'
-
-  # Step 4: Configure IAP preparation
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        echo "Preparing IAP configuration for ${_SERVICE_NAME}..."
+        echo "=== Preparing for deployment ==="
         echo "Service: ${_SERVICE_NAME}"
         echo "Project: ${_PROJECT_ID}"
-        echo "IAP APIs are enabled and ready for OAuth configuration"
-        echo "Next steps:"
-        echo "1. Configure OAuth consent screen in Cloud Console"
-        echo "2. Create OAuth 2.0 client ID"
-        echo "3. Update app.yaml with client ID"
-        echo "4. Configure IAP policies"
+        echo "Files in directory:"
+        ls -la
+        
+        echo "=== Validating app.yaml ==="
+        if [ -f "app.yaml" ]; then
+          echo "✅ app.yaml found"
+          cat app.yaml
+        else
+          echo "❌ app.yaml not found"
+          exit 1
+        fi
+        
+        echo "=== Validating main.py ==="
+        if [ -f "main.py" ]; then
+          echo "✅ main.py found"
+          head -10 main.py
+        else
+          echo "❌ main.py not found"
+          exit 1
+        fi
+        
+        echo "=== Validating requirements.txt ==="
+        if [ -f "requirements.txt" ]; then
+          echo "✅ requirements.txt found"
+          cat requirements.txt
+        else
+          echo "❌ requirements.txt not found"
+          exit 1
+        fi
+        
+        echo "=== Starting App Engine deployment ==="
+        gcloud app deploy app.yaml \
+          --project=${_PROJECT_ID} \
+          --version=${_SERVICE_NAME}-v$(date +%s) \
+          --quiet \
+          --verbosity=info
+        
+        echo "✅ Deployment completed successfully"
+    dir: '.'
+
+  # Step 5: Verify deployment and show access info
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "=== Deployment Verification ==="
+        gcloud app browse --project=${_PROJECT_ID} --no-launch-browser
+        echo ""
+        echo "=== Next Steps for IAP Configuration ==="
+        echo "1. Go to: https://console.cloud.google.com/security/iap?project=${_PROJECT_ID}"
+        echo "2. Configure OAuth consent screen"
+        echo "3. Create OAuth 2.0 client for App Engine"
+        echo "4. Enable IAP for your App Engine service"
+        echo "5. Configure Azure AD as external identity provider"
 
 substitutions:
   _SERVICE_NAME: 'hello-world-app'
@@ -61,4 +142,4 @@ options:
   logging: CLOUD_LOGGING_ONLY
   substitution_option: ALLOW_LOOSE
 
-timeout: '1200s'
+timeout: '1800s'  # Increased timeout for App Engine creation
