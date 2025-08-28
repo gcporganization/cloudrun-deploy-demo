@@ -31,36 +31,50 @@ jobs:
       id: auth
       uses: 'google-github-actions/auth@v2'
       with:
-        token_format: 'access_token'
         workload_identity_provider: "projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
         service_account: "github-deployer@nonprod1-svc-gu0t.iam.gserviceaccount.com"
-        access_token_scopes: "https://www.googleapis.com/auth/cloud-platform"
-        create_credentials_file: false
+        token_format: 'access_token'
 
     - name: 'Setup Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
+      with:
+        project_id: ${{ env.PROJECT_ID }}
 
-    - name: Activate GCP account for gcloud
-      run: gcloud auth activate-account --access-token=$GOOGLE_GHA_ACCESS_TOKEN
-
-    - name: Debug gcloud auth
+    - name: 'Verify Authentication and Project'
       run: |
-        gcloud auth list
+        echo "=== Authentication Verification ==="
+        gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+        echo ""
+        echo "=== Project Configuration ==="
         gcloud config list
+        echo ""
+        echo "=== Project Details ==="
+        gcloud projects describe ${{ env.PROJECT_ID }} --format="table(projectId,name,lifecycleState)"
 
-
-    - name: 'Trigger Cloud Build for App Engine'
+    - name: 'Deploy App Engine via Cloud Build'
+      working-directory: appengine-deployment
       run: |
-        echo "Starting deployment with the following parameters:"
+        echo "=== Starting App Engine Deployment ==="
         echo "Project: ${{ env.PROJECT_ID }}"
         echo "Service: ${{ env.SERVICE }}"
         echo "Region: ${{ env.GAR_LOCATION }}"
+        echo ""
         
-        cd appengine-deployment/
-
+        # Verify required APIs are enabled before deployment
+        echo "=== Checking Required APIs ==="
+        gcloud services list --enabled --filter="name:(appengine.googleapis.com OR cloudbuild.googleapis.com OR iap.googleapis.com)" --format="table(name,title)"
+        echo ""
+        
+        # Submit Cloud Build
         gcloud builds submit \
           --config=cloudbuild.yaml \
           --project=${{ env.PROJECT_ID }} \
           --substitutions="_SERVICE_NAME=${{ env.SERVICE }},_PROJECT_ID=${{ env.PROJECT_ID }}" \
           --timeout=1200s \
-          --verbosity=debug .
+          .
+        
+        echo ""
+        echo "=== Deployment Summary ==="
+        echo "✅ App Engine deployment completed successfully!"
+        echo "🌐 Your application will be available at: https://${{ env.PROJECT_ID }}.ue.r.appspot.com"
+        echo "📋 Next step: Configure IAP for Azure AD integration"
