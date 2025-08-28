@@ -47,7 +47,6 @@ jobs:
 
     - name: 'Enable Required APIs'
       run: |
-        gcloud services enable appengineadmin.googleapis.com --project=${{ env.PROJECT_ID }}
         gcloud services enable appengine.googleapis.com --project=${{ env.PROJECT_ID }}
         gcloud services enable iap.googleapis.com --project=${{ env.PROJECT_ID }}
 
