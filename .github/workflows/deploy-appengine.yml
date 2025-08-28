@@ -53,7 +53,6 @@ jobs:
     - name: 'Deploy App Engine Directly'
       working-directory: appengine-deployment
       run: |
-        gcloud builds submit --no-cache
         echo "=== Verifying files ==="
         ls -la
         echo ""
