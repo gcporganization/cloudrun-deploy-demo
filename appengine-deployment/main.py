@@ -1,8 +1,8 @@
 # appengine-deployment/src/main.py
 import os
 from flask import Flask, render_template_string, request
-from google.auth.transport import requests
-from google.oauth2 import id_token
+import base64
+import json
 import logging
 
 app = Flask(__name__)
@@ -77,6 +77,7 @@ HTML_TEMPLATE = '''
             {% if user_email %}
                 <p><strong>Email:</strong> {{ user_email }}</p>
                 <p><strong>Name:</strong> {{ user_name or 'Not provided' }}</p>
+                <p><strong>Groups:</strong> {{ user_groups | join(', ') if user_groups else 'No groups assigned' }}</p>
             {% else %}
                 <p>No user information available (IAP not configured yet)</p>
             {% endif %}
@@ -91,19 +92,42 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
+def decode_iap_jwt(iap_jwt):
+    """Decode IAP JWT payload (without signature verification)"""
+    try:
+        parts = iap_jwt.split('.')
+        if len(parts) != 3:
+            return {}
+        payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)  # pad base64
+        payload_json = base64.urlsafe_b64decode(payload_b64.encode('utf-8'))
+        payload = json.loads(payload_json.decode('utf-8'))
+        return payload
+    except Exception as e:
+        logging.error(f"Failed to decode IAP JWT: {e}")
+        return {}
+
 @app.route('/')
 def hello_world():
-    # Get user information from IAP headers (when configured)
-    user_email = request.headers.get('X-Goog-Authenticated-User-Email', '').replace('accounts.google.com:', '')
-    user_name = request.headers.get('X-Goog-Authenticated-User-Name', '')
-    
+    # Get IAP JWT
+    iap_jwt = request.headers.get('x-goog-iap-jwt-assertion')
+    user_email = None
+    user_name = None
+    user_groups = []
+
+    if iap_jwt:
+        payload = decode_iap_jwt(iap_jwt)
+        user_email = payload.get('email')
+        user_name = payload.get('name') or payload.get('given_name')
+        user_groups = payload.get('groups', [])  # This should contain your AAD group IDs
+
     app_title = os.environ.get('APP_TITLE', 'Hello World App')
-    
+
     return render_template_string(
         HTML_TEMPLATE,
         app_title=app_title,
-        user_email=user_email if user_email else None,
-        user_name=user_name if user_name else None
+        user_email=user_email,
+        user_name=user_name,
+        user_groups=user_groups
     )
 
 @app.route('/health')
@@ -114,12 +138,10 @@ def health_check():
 def info():
     return {
         'service': 'App Engine Hello World',
-        'version': '1.0.0',
+        'version': '1.0.1',
         'iap_ready': True,
         'azure_ad_integration': 'Pending Configuration'
     }
 
 if __name__ == '__main__':
-    # This is used when running locally only. When deploying to App Engine,
-    # the gunicorn webserver is used to run the app.
     app.run(host='127.0.0.1', port=8080, debug=True)
